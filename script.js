@@ -1,222 +1,180 @@
-/* =========================
-   Reyes Magos Tracker (GitHub Pages)
-   - Modo prueba: timestamp_11am
-   - Luego cambiaremos a timestamp_20_30
-========================= */
-
 Cesium.Ion.defaultAccessToken =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJiNGQwOGU5Yi0wZGM3LTQyNDgtYTNhYS0zMTZjYTAzNTRkZWIiLCJpZCI6MjY1NzQxLCJpYXQiOjE3MzU3NjQ3NjN9.wYL_fNJNQsAnc2aQFPfEYF3ukqZmm_d3nvaTXz8hX1Y';
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJiNGQwOGU5Yi0wZGM3LTQyNDgtYTNhYS0zMTZjYTAzNTRkZWIiLCJpZCI6MjY1NzQxLCJpYXQiOjE3MzU3NjQ3NjN9.wYL_fNJNQsAnc2aQFPfEYF3ukqZmm_d3nvaTXz8hX1Y";
 
-/** ✅ Cambia esto a 'timestamp_20_30' cuando me digas */
-const ACTIVE_TIMESTAMP_FIELD = 'timestamp_11am';
+document.addEventListener("DOMContentLoaded", () => {
+  // ✅ Cambia aquí el horario activo
+  const ACTIVE_TIMESTAMP_KEY = "timestamp_20_30"; // <- AHORA 20:30
+  // const ACTIVE_TIMESTAMP_KEY = "timestamp_11am"; // <- (por si quieres volver a probar 11am)
 
-/** Ruta relativa para GitHub Pages */
-const JSON_PATH = './ReyesMagos.json';
+  // Control de suavidad: FPS “lógico” (no hace falta 60)
+  const TICK_MS = 50; // 20 FPS aprox
 
-document.addEventListener('DOMContentLoaded', () => {
-  initViewer().catch((e) => console.error('❌ Error initViewer:', e));
-});
+  // Fetch robusto para GitHub Pages (evita el /ReyesMagos.json)
+  const jsonUrl = new URL("./ReyesMagos.json", window.location.href).toString();
 
-async function initViewer() {
-  console.log(`📂 Cargando JSON de ${JSON_PATH}...`);
-  console.log(`🧭 Campo de tiempo activo: ${ACTIVE_TIMESTAMP_FIELD}`);
+  function toEpochSeconds(value) {
+    // Acepta:
+    // - number (1735902002)
+    // - string number ("1735902002")
+    // - ISO string ("2025-01-03T19:30:00Z")
+    if (value == null) return NaN;
 
-  const viewer = new Cesium.Viewer('map', {
-    terrainProvider: await Cesium.createWorldTerrainAsync(),
-    animation: false,
-    timeline: false,
-    baseLayerPicker: false,
-    geocoder: false,
-    homeButton: false,
-    sceneModePicker: false,
-    navigationHelpButton: false,
-    fullscreenButton: false,
-    infoBox: false,
-  });
-
-  viewer._cesiumWidget._creditContainer.style.display = 'none';
-
-  // “Ambiente” algo más nocturno (sin romper tu overlay)
-  viewer.scene.globe.enableLighting = true;
-  viewer.scene.skyBox.show = false;
-
-  const resp = await fetch(JSON_PATH, { cache: 'no-store' });
-  if (!resp.ok) throw new Error(`No se pudo cargar ${JSON_PATH} (HTTP ${resp.status})`);
-
-  const raw = await resp.json();
-  console.log('✅ JSON cargado correctamente:', raw?.length);
-
-  // Exponer para depuración desde consola
-  window.reyesData = raw;
-
-  const frames = normalizeFrames(raw, ACTIVE_TIMESTAMP_FIELD);
-
-  if (frames.length < 2) {
-    console.warn('⚠️ El JSON no tiene suficientes puntos para animar.');
-    return;
+    if (typeof value === "number") return value;
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      // ¿es numérico?
+      if (/^\d+(\.\d+)?$/.test(trimmed)) return Math.floor(Number(trimmed));
+      // ¿es ISO?
+      const ms = Date.parse(trimmed);
+      if (!Number.isNaN(ms)) return Math.floor(ms / 1000);
+    }
+    return NaN;
   }
 
-  const firstT = frames[0].t;
-  const lastT = frames[frames.length - 1].t;
-
-  console.log('🕕 Primer timestamp:', firstT);
-  console.log('🕙 Último timestamp:', lastT);
-
-  // Set inicial “seguro”
-  setCameraAndUI(viewer, frames[0], frames[0]);
-
-  // Índice de trabajo (para no hacer búsqueda completa cada frame)
-  let i = findStartIndex(frames, nowSec());
-
-  function tick() {
-    const now = nowSec();
-
-    // Antes de empezar: fija primer frame, pero sigue esperando para arrancar justo a su hora
-    if (now < firstT) {
-      setCameraAndUI(viewer, frames[0], frames[0]);
-      requestAnimationFrame(tick);
-      return;
-    }
-
-    // Después de terminar: fija último frame y no animamos más (se queda “final”)
-    if (now >= lastT) {
-      setCameraAndUI(viewer, frames[frames.length - 1], frames[frames.length - 1]);
-      return;
-    }
-
-    // Avanza índice mientras pasamos timestamps
-    while (i < frames.length - 2 && now >= frames[i + 1].t) i++;
-
-    const a = frames[i];
-    const b = frames[i + 1];
-
-    const dt = b.t - a.t;
-    const alpha = dt > 0 ? clamp01((now - a.t) / dt) : 0;
-
-    const interp = {
-      t: now,
-      lat: lerp(a.lat, b.lat, alpha),
-      lon: lerp(a.lon, b.lon, alpha),
-      alt: lerp(a.alt, b.alt, alpha),
-      gifts: lerp(a.gifts, b.gifts, alpha),
-
-      // texto: usamos el “estado” del tramo (puedes ajustar si prefieres b)
-      municipioActual: a.municipioActual,
-      ultimoMunicipio: a.ultimoMunicipio,
-      proximoMunicipio: a.proximoMunicipio,
-    };
-
-    setCameraAndUI(viewer, interp, a);
-
-    requestAnimationFrame(tick);
+  function lerp(a, b, t) {
+    return a + (b - a) * t;
   }
 
-  console.log('🚀 Animación lista. (No reinicia: va por tiempo real)');
-  requestAnimationFrame(tick);
-}
+  function clamp01(x) {
+    return Math.max(0, Math.min(1, x));
+  }
 
-/* =========================
-   Helpers
-========================= */
+  function updatePopup(frame, giftsInterpolated) {
+    const currentEl = document.getElementById("current-location");
+    const lastEl = document.getElementById("last-location");
+    const nextEl = document.getElementById("next-location");
+    const giftsEl = document.getElementById("gift-count");
 
-function nowSec() {
-  return Math.floor(Date.now() / 1000);
-}
+    if (currentEl) currentEl.innerText = frame["Municipio Actual"] ?? "-";
+    if (lastEl) lastEl.innerText = frame["Último Municipio"] ?? "-";
+    if (nextEl) nextEl.innerText = frame["Próximo Municipio"] ?? "-";
+    if (giftsEl) giftsEl.innerText = `${Math.round(giftsInterpolated ?? frame["Regalos Entregados"] ?? 0)}`;
+  }
 
-function normalizeFrames(raw, tsField) {
-  const out = [];
-
-  for (const f of raw) {
-    const t = parseTimestampToSec(f?.[tsField]);
-    const lat = Number(f?.latitude);
-    const lon = Number(f?.longitude);
-    const alt = Number(f?.altitude);
-    const gifts = Number(f?.['Regalos Entregados']);
-
-    // Filtrado mínimo de datos inválidos
-    if (!Number.isFinite(t) || !Number.isFinite(lat) || !Number.isFinite(lon) || !Number.isFinite(alt)) continue;
-
-    out.push({
-      t,
-      lat,
-      lon,
-      alt,
-      gifts: Number.isFinite(gifts) ? gifts : 0,
-
-      municipioActual: String(f?.['Municipio Actual'] ?? ''),
-      ultimoMunicipio: String(f?.['Último Municipio'] ?? ''),
-      proximoMunicipio: String(f?.['Próximo Municipio'] ?? ''),
+  function setCamera(viewer, lon, lat, alt) {
+    viewer.camera.setView({
+      destination: Cesium.Cartesian3.fromDegrees(lon, lat, alt),
     });
   }
 
-  // Aseguramos orden por tiempo ascendente
-  out.sort((a, b) => a.t - b.t);
+  async function initViewer() {
+    console.log("📂 Cargando JSON:", jsonUrl);
 
-  return out;
-}
+    const viewer = new Cesium.Viewer("map", {
+      terrainProvider: await Cesium.createWorldTerrainAsync(),
+      animation: false,
+      timeline: false,
+      baseLayerPicker: false,
+      geocoder: false,
+      homeButton: false,
+      sceneModePicker: false,
+      navigationHelpButton: false,
+      fullscreenButton: false,
+      infoBox: false,
+    });
 
-/**
- * Acepta:
- * - número (segundos epoch)
- * - string ISO (2026-01-05T10:00:00Z)
- */
-function parseTimestampToSec(v) {
-  if (typeof v === 'number' && Number.isFinite(v)) return Math.floor(v);
+    viewer._cesiumWidget._creditContainer.style.display = "none";
 
-  if (typeof v === 'string') {
-    // Si viene como número en string
-    const asNum = Number(v);
-    if (Number.isFinite(asNum)) return Math.floor(asNum);
+    // ✅ Carga JSON
+    const res = await fetch(jsonUrl, { cache: "no-store" });
+    if (!res.ok) throw new Error(`No se pudo cargar ReyesMagos.json (${res.status})`);
+    const rawData = await res.json();
+    console.log("✅ JSON cargado:", rawData?.length);
 
-    const ms = Date.parse(v);
-    if (Number.isFinite(ms)) return Math.floor(ms / 1000);
+    // ✅ Normaliza timestamps al horario activo
+    const data = rawData
+      .map((f) => {
+        const t = toEpochSeconds(f[ACTIVE_TIMESTAMP_KEY]);
+        return { ...f, __t: t };
+      })
+      .filter((f) => Number.isFinite(f.__t))
+      .sort((a, b) => a.__t - b.__t);
+
+    if (!data.length) {
+      console.error("❌ No hay datos válidos con el campo:", ACTIVE_TIMESTAMP_KEY);
+      return;
+    }
+
+    const startT = data[0].__t;
+    const endT = data[data.length - 1].__t;
+
+    console.log("🧭 Horario activo:", ACTIVE_TIMESTAMP_KEY);
+    console.log("🕗 Inicio (epoch):", startT, "Fin (epoch):", endT);
+
+    // ✅ Coloca cámara al inicio (siempre)
+    setCamera(viewer, data[0].longitude, data[0].latitude, data[0].altitude);
+    updatePopup(data[0], data[0]["Regalos Entregados"] ?? 0);
+
+    // ✅ Búsqueda binaria para encontrar el tramo actual (t entre i e i+1)
+    const times = data.map((f) => f.__t);
+
+    function findLeftIndex(t) {
+      // mayor i tal que times[i] <= t
+      let lo = 0;
+      let hi = times.length - 1;
+
+      if (t <= times[0]) return 0;
+      if (t >= times[hi]) return hi - 1;
+
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (times[mid] <= t) lo = mid + 1;
+        else hi = mid - 1;
+      }
+      return Math.max(0, hi);
+    }
+
+    // ✅ Loop sincronizado a reloj real
+    let timer = null;
+
+    function tick() {
+      const now = Math.floor(Date.now() / 1000);
+
+      if (now < startT) {
+        // Aún no arranca: deja el primer punto y “espera”
+        updatePopup(data[0], data[0]["Regalos Entregados"] ?? 0);
+        return;
+      }
+
+      if (now >= endT) {
+        // Fin: fija último punto
+        const last = data[data.length - 1];
+        setCamera(viewer, last.longitude, last.latitude, last.altitude);
+        updatePopup(last, last["Regalos Entregados"] ?? 0);
+        return;
+      }
+
+      const i = findLeftIndex(now);
+      const a = data[i];
+      const b = data[i + 1] ?? a;
+
+      const dt = Math.max(1, b.__t - a.__t);
+      const alpha = clamp01((now - a.__t) / dt);
+
+      const lat = lerp(a.latitude, b.latitude, alpha);
+      const lon = lerp(a.longitude, b.longitude, alpha);
+      const alt = lerp(a.altitude, b.altitude, alpha);
+
+      const giftsA = Number(a["Regalos Entregados"] ?? 0);
+      const giftsB = Number(b["Regalos Entregados"] ?? giftsA);
+      const gifts = lerp(giftsA, giftsB, alpha);
+
+      setCamera(viewer, lon, lat, alt);
+      updatePopup(a, gifts);
+    }
+
+    // ✅ Arranque inmediato si ya es la hora, o espera hasta que lo sea
+    const now0 = Math.floor(Date.now() / 1000);
+    if (now0 < startT) {
+      console.log("⏳ Aún no son las 20:30 (según JSON). Quedará esperando y arrancará cuando toque.");
+    } else {
+      console.log("✅ Ya estamos dentro de la ventana del recorrido. Arrancando en el punto correcto.");
+    }
+
+    tick(); // primera pintura
+    timer = setInterval(tick, TICK_MS);
   }
 
-  return NaN;
-}
+  initViewer().catch((err) => console.error("❌ Error initViewer:", err));
+});
 
-function findStartIndex(frames, tNow) {
-  // Queremos i tal que frames[i].t <= now < frames[i+1].t
-  let lo = 0;
-  let hi = frames.length - 1;
-
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    if (frames[mid].t <= tNow) lo = mid + 1;
-    else hi = mid - 1;
-  }
-
-  // hi queda como el índice del último <= now
-  return Math.max(0, Math.min(frames.length - 2, hi));
-}
-
-function setCameraAndUI(viewer, frame, textFrame) {
-  // Cámara: mantenemos orientación actual; sólo movemos destino.
-  viewer.camera.setView({
-    destination: Cesium.Cartesian3.fromDegrees(frame.lon, frame.lat, frame.alt),
-  });
-
-  // UI (popup)
-  const cur = document.getElementById('current-location');
-  const last = document.getElementById('last-location');
-  const next = document.getElementById('next-location');
-  const gifts = document.getElementById('gift-count');
-
-  if (cur) cur.innerText = textFrame.municipioActual || '-';
-  if (last) last.innerText = textFrame.ultimoMunicipio || '-';
-  if (next) next.innerText = textFrame.proximoMunicipio || '-';
-  if (gifts) gifts.innerText = formatInt(frame.gifts);
-}
-
-function formatInt(n) {
-  const v = Number.isFinite(n) ? Math.round(n) : 0;
-  return v.toLocaleString('es-ES');
-}
-
-function lerp(a, b, t) {
-  return a + (b - a) * t;
-}
-
-function clamp01(x) {
-  return Math.max(0, Math.min(1, x));
-}
