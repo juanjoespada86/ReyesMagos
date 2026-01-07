@@ -5,62 +5,92 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Reyes Magos Tracker</title>
 
-  <!-- Cesium CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/cesium@1.105/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/cesium@1.105/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
 
-  <!-- Fuentes (Instrument Sans). Impact suele estar en el sistema; si no, caerá a sans-serif -->
+  <!-- Instrument Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-
-  <link rel="stylesheet" href="styles.css" />
 </head>
 
 <body>
-  <!-- Mapa Cesium -->
-  <div id="map"></div>
+  <div id="page">
+    <!-- ====== MAPA (con overlay + header + icono) ====== -->
+    <div id="map-wrapper">
+      <div id="map"></div>
+      <div id="map-overlay"></div>
 
-  <!-- Capa de oscurecimiento -->
-  <div id="map-overlay"></div>
+      <!-- Contenedor del logo y el popup -->
+      <div id="header-container">
+        <img id="logo"
+          src="https://cdn.glitch.global/87bb3124-f159-49e8-9774-acf121d0ecea/logotipo_superior.png?v=1735936593178"
+          alt="Logo">
 
-  <!-- Contenedor del logo y el popup -->
-  <div id="header-container">
-    <img id="logo"
-      src="https://cdn.glitch.global/87bb3124-f159-49e8-9774-acf121d0ecea/logotipo_superior.png?v=1735936593178"
-      alt="Logo">
+        <div id="popup-info">
+          <img id="popup-icon"
+            src="https://cdn.glitch.global/87bb3124-f159-49e8-9774-acf121d0ecea/icono_reyes_popup.png?v=1735936602542"
+            alt="Reyes Magos">
 
-    <div id="popup-info">
-      <img id="popup-icon"
-        src="https://cdn.glitch.global/87bb3124-f159-49e8-9774-acf121d0ecea/icono_reyes_popup.png?v=1735936602542"
-        alt="Reyes Magos">
-      <h2>Los REYES MAGOS en Extremadura</h2>
+          <h2>Los REYES MAGOS en Extremadura</h2>
 
-      <p>Ahora están en: <strong id="current-location">La caravana real no está en Extremadura</strong></p>
-      <p>Acaban de pasar por: <strong id="last-location">-</strong></p>
-      <p>Próximo destino: <strong id="next-location">-</strong></p>
+          <p>Ahora están en: <strong id="current-location">La caravana real no está en Extremadura</strong></p>
+          <p>Acaban de pasar por: <strong id="last-location">-</strong></p>
+          <p>Próximo destino: <strong id="next-location">-</strong></p>
 
-      <p class="bold">🎁 REGALOS ENTREGADOS</p>
-      <p id="gift-count">-</p>
+          <p class="bold">🎁 REGALOS ENTREGADOS</p>
+          <p id="gift-count">-</p>
+        </div>
+      </div>
+
+      <!-- Icono central de los Reyes Magos -->
+      <img id="icono-reyes"
+        src="https://cdn.glitch.global/87bb3124-f159-49e8-9774-acf121d0ecea/Icono_reyes_central.png?v=1735936597634"
+        alt="Icono Reyes Magos">
     </div>
+
+    <!-- ====== PANEL MUNICIPIOS (debajo del mapa) ====== -->
+    <section id="municipios-panel">
+      <div id="municipios-header">
+        <img id="municipios-logo"
+          src="https://cdn.glitch.global/87bb3124-f159-49e8-9774-acf121d0ecea/logo_seccion_buscador.png?v=1735936606406"
+          alt="Buscador">
+        <div>
+          <div id="municipios-title">BUSCADOR DE MUNICIPIOS</div>
+          <div id="municipios-subtitle">Consulta si la caravana ya ha pasado por tu municipio</div>
+        </div>
+      </div>
+
+      <div id="municipios-search">
+        <img id="search-icon"
+          src="https://cdn.glitch.global/87bb3124-f159-49e8-9774-acf121d0ecea/icono_buscador.png?v=1735936610213"
+          alt="Buscar">
+        <input id="municipio-input" type="text" placeholder="Escribe un municipio (filtra en tiempo real)..." autocomplete="off">
+        <button id="clear-search" type="button" aria-label="Borrar búsqueda">×</button>
+      </div>
+
+      <div id="municipios-legend">
+        <span class="legend-pill current">AHORA</span>
+        <span class="legend-pill visited">RECORRIDO</span>
+        <span class="legend-pill pending">PENDIENTE</span>
+        <span id="municipios-status"></span>
+      </div>
+
+      <div id="municipios-list-wrap">
+        <ul id="municipios-list"></ul>
+      </div>
+    </section>
+
+    <!-- ====== FOOTER ====== -->
+    <footer id="footer">
+      <img id="footer-logo"
+        src="https://cdn.glitch.global/87bb3124-f159-49e8-9774-acf121d0ecea/logo_footer.png?v=1735936613975"
+        alt="Canal Extremadura Logo">
+      <p>Canal Extremadura, 2025</p>
+    </footer>
   </div>
 
-  <!-- Icono central de los Reyes Magos -->
-  <img id="icono-reyes"
-    src="https://cdn.glitch.global/87bb3124-f159-49e8-9774-acf121d0ecea/Icono_reyes_central.png?v=1735936597634"
-    alt="Icono Reyes Magos" />
-
-  <!-- Cesium JS -->
   <script src="https://cdn.jsdelivr.net/npm/cesium@1.105/Build/Cesium/Cesium.js"></script>
-
-  <!-- Tu lógica -->
   <script src="script.js"></script>
-
-  <!-- Footer -->
-  <footer id="footer">
-    <img id="footer-logo"
-      src="https://cdn.glitch.global/87bb3124-f159-49e8-9774-acf121d0ecea/logo_footer.png?v=1735936613975"
-      alt="Canal Extremadura Logo">
-    <p>Canal Extremadura, 2026</p>
-  </footer>
 </body>
 </html>
