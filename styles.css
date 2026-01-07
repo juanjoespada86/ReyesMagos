@@ -1,30 +1,44 @@
 /* 🎭 ESTILOS GENERALES */
-body, html {
+html, body {
   margin: 0;
   padding: 0;
-  overflow: hidden;
   height: 100%;
   width: 100%;
   font-family: 'Instrument Sans', sans-serif;
+  overflow: hidden; /* mantenemos “app full-screen” */
+}
+
+/* Página en 3 filas: mapa / panel / footer */
+#page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+}
+
+/* ===== MAP WRAPPER ===== */
+#map-wrapper {
+  position: relative;
+  flex: 1 1 auto;    /* ocupa el resto del alto */
+  min-height: 0;     /* importante para que el panel inferior no rompa el layout */
 }
 
 /* 🌍 CONTENEDOR DEL MAPA */
 #map {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: 100vh;
+  height: 100%;
 }
 
 /* 🎨 CAPA DE OSCURECIMIENTO SOBRE EL MAPA */
 #map-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: #34167C;
   mix-blend-mode: soft-light;
   z-index: 50;
-  pointer-events: none; /* importante para no bloquear interacción */
+  pointer-events: none;
 }
 
 /* 🎭 CONTENEDOR DEL LOGO Y POPUP */
@@ -38,6 +52,11 @@ body, html {
   align-items: flex-start;
   justify-content: space-between;
   z-index: 110;
+  pointer-events: none; /* evita “bloquear” gestos del mapa */
+}
+
+#header-container * {
+  pointer-events: auto; /* pero permitimos interacción con el popup si la necesitas */
 }
 
 /* 🔱 LOGO SUPERIOR IZQUIERDO */
@@ -74,7 +93,6 @@ body, html {
 }
 
 #popup-info p {
-  font-family: 'Instrument Sans', sans-serif;
   color: #231F20;
   margin: 5px 0;
 }
@@ -89,14 +107,13 @@ body, html {
 
 /* 🎁 NÚMERO DE REGALOS ENTREGADOS */
 #gift-count {
-  font-family: 'Instrument Sans', sans-serif;
   font-size: 18px;
 }
 
 /* 🎥 ICONO CENTRAL DE LOS REYES MAGOS */
 #icono-reyes {
   position: absolute;
-  top: 50%;
+  top: 52%;
   left: 50%;
   transform: translate(-50%, -50%);
   width: 100px;
@@ -105,11 +122,183 @@ body, html {
   pointer-events: none;
 }
 
-/* 🔻 PIE DE PÁGINA (FOOTER) */
-#footer {
+/* ===== PANEL MUNICIPIOS ===== */
+#municipios-panel {
+  flex: 0 0 28vh;
+  min-height: 200px;
+  background: #f2f2e6;
+  border-top: 1px solid rgba(35, 31, 32, 0.12);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#municipios-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#municipios-logo {
+  width: 44px;
+  height: auto;
+}
+
+#municipios-title {
+  font-family: 'Impact', sans-serif;
+  color: #5E8053;
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+#municipios-subtitle {
+  color: #231F20;
+  opacity: 0.85;
+  font-size: 13px;
+}
+
+/* Buscador */
+#municipios-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+#search-icon {
   position: absolute;
-  bottom: 0;
+  left: 12px;
+  width: 18px;
+  height: auto;
+  opacity: 0.95;
+}
+
+#municipio-input {
   width: 100%;
+  background: #231F20;
+  color: #F2F2E6;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 42px 12px 40px;
+  font-size: 14px;
+  outline: none;
+}
+
+#municipio-input::placeholder {
+  color: rgba(242, 242, 230, 0.65);
+}
+
+#clear-search {
+  position: absolute;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: rgba(242, 242, 230, 0.9);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+#clear-search:hover {
+  background: rgba(242, 242, 230, 0.12);
+}
+
+/* Leyenda + estado */
+#municipios-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.legend-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.legend-pill.current {
+  background: #5E8053;
+  color: #F2F2E6;
+}
+
+.legend-pill.visited {
+  background: rgba(94, 128, 83, 0.12);
+  color: #231F20;
+}
+
+.legend-pill.pending {
+  background: rgba(35, 31, 32, 0.06);
+  color: rgba(35, 31, 32, 0.45);
+}
+
+#municipios-status {
+  margin-left: 6px;
+  font-size: 13px;
+  color: #231F20;
+  opacity: 0.85;
+}
+
+/* Lista */
+#municipios-list-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+#municipios-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  /* columnas para escritorio */
+  column-count: 3;
+  column-gap: 14px;
+}
+
+#municipios-list li {
+  break-inside: avoid;
+  padding: 8px 10px;
+  border-radius: 10px;
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  border: 1px solid rgba(35, 31, 32, 0.08);
+  background: rgba(255,255,255,0.35);
+}
+
+/* Estados */
+#municipios-list li.visited {
+  color: #231F20;
+  opacity: 1;
+}
+
+#municipios-list li.pending {
+  color: rgba(35, 31, 32, 0.45);
+  opacity: 1;
+}
+
+#municipios-list li.current {
+  background: #5E8053;
+  color: #F2F2E6;
+  border-color: rgba(0,0,0,0.0);
+  font-weight: 700;
+}
+
+/* Cuando filtramos: oculto */
+#municipios-list li.hidden {
+  display: none;
+}
+
+/* ===== FOOTER ===== */
+#footer {
+  flex: 0 0 auto;
   background: #231F20;
   color: white;
   text-align: center;
@@ -118,23 +307,20 @@ body, html {
   justify-content: center;
   align-items: center;
   gap: 10px;
-  z-index: 120; /* por encima del overlay */
 }
 
-/* 🎯 TEXTO DEL FOOTER */
 #footer p {
   font-family: 'Impact', sans-serif;
   margin: 0;
   font-size: 16px;
 }
 
-/* 🏷️ LOGO DEL FOOTER */
 #footer-logo {
   width: 30px;
   height: auto;
 }
 
-/* 📌 ESTILOS RESPONSIVE */
+/* ===== RESPONSIVE ===== */
 @media (max-width: 1224px) {
   #header-container {
     flex-direction: column;
@@ -160,7 +346,6 @@ body, html {
     font-size: 18px;
   }
 
-  /* baja el icono en mobile para que no lo tape el popup */
   #icono-reyes {
     top: 70%;
     width: 80px;
@@ -169,5 +354,20 @@ body, html {
   #logo {
     height: 100px;
     margin-bottom: 10px;
+  }
+
+  /* Panel más alto en móvil */
+  #municipios-panel {
+    flex-basis: 34vh;
+  }
+
+  #municipios-list {
+    column-count: 1;
+  }
+}
+
+@media (min-width: 1225px) and (max-width: 1500px) {
+  #municipios-list {
+    column-count: 2;
   }
 }
